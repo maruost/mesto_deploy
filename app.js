@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 /* eslint-disable no-console */
 require('dotenv').config();
 const express = require('express');
@@ -35,6 +36,12 @@ app.use(cookieParser());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(requestLogger);
 
+app.get('/crash-test', () => {
+  setTimeout(() => {
+    throw new Error('Сервер сейчас упадёт');
+  }, 0);
+});
+
 app.post('/signin', celebrate({
   body: Joi.object().keys({
     email: Joi.string().required(),
@@ -56,14 +63,13 @@ app.use('/cards', auth, cards);
 app.use('/users', auth, users);
 
 app.use(errorLogger);
-// eslint-disable-next-line no-unused-vars
+
 app.use((req, res) => {
   throw new NotFoundError('Запрашиваемый ресурс не найден');
 });
 
 app.use(errors());
 
-// eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
   const { statusCode = 500, message } = err;
 
