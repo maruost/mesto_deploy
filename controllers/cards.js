@@ -1,39 +1,33 @@
 /* eslint-disable no-underscore-dangle */
 const Card = require('../models/card');
+const NotFoundError = require('../middlewares/errors/not-found-error');
+const AuthErorr = require('../middlewares/errors/authorization-error');
 
-module.exports.showAllCards = (req, res) => {
+module.exports.showAllCards = (req, res, next) => {
   Card.find({})
     .then((card) => res.send({ data: card }))
-    .catch(() => res.status(500).send({ message: 'На сервере произошла ошибка' }));
+    .catch(next);
 };
 
-module.exports.createCard = (req, res) => {
+module.exports.createCard = (req, res, next) => {
   const { name, link } = req.body;
 
   return Card.create({ name, link, owner: req.user._id })
     .then((card) => res.status(201).send({ data: card }))
-    .catch((err) => {
-      if (err.name.includes('ValidationError')) {
-        return res.status(400).send({ message: 'Ошибка валидации' });
-      }
-      return res.status(500).send({ message: 'На сервере произошла ошибка' });
-    });
+    .catch(next);
 };
 
-module.exports.deleteCard = (req, res) => {
+module.exports.deleteCard = (req, res, next) => {
   Card.findById(req.params.cardId)
-    .orFail(() => res.status(404).send({ message: 'Запрашиваемой карточки не существует' }))
+    .orFail(() => {
+      throw new NotFoundError('Запрашиваемой карточки не существует');
+    })
     .then((card) => {
       if (!(String(card.owner) === req.user._id)) {
-        return res.status(403).send({ message: 'Недостаточно прав для совершения данного действия' });
+        throw new AuthErorr('Недостаточно прав для совершения данного действия');
       }
       card.remove();
       return res.send({ data: card });
     })
-    .catch((err) => {
-      if (err.name.includes('CastError')) {
-        return res.status(404).send({ message: 'Запрашиваемая карточка не найдена' });
-      }
-      return res.status(500).send({ message: err.name });
-    });
+    .catch(next);
 };

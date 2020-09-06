@@ -3,28 +3,26 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/user');
+const NotFoundError = require('../middlewares/errors/not-found-error');
 
 const { NODE_ENV, JWT_SECRET } = process.env;
 
-module.exports.showAllUsers = (req, res) => {
+module.exports.showAllUsers = (req, res, next) => {
   User.find({})
     .then((user) => res.send({ data: user }))
-    .catch(() => res.status(500).send({ message: 'На сервере произошла ошибка' }));
+    .catch(next);
 };
 
-module.exports.showUser = (req, res) => {
+module.exports.showUser = (req, res, next) => {
   User.findById(req.params.id)
-    .orFail(() => res.status(404).send({ message: 'Нет пользователя с таким id' }))
+    .orFail(() => {
+      throw new NotFoundError('Нет пользователя с таким id');
+    })
     .then((user) => res.send({ data: user }))
-    .catch((err) => {
-      if (err.name.includes('CastError')) {
-        return res.status(404).send({ message: 'Нет пользователя с таким id' });
-      }
-      return res.status(500).send({ message: 'На сервере произошла ошибка' });
-    });
+    .catch(next);
 };
 
-module.exports.createUser = (req, res) => {
+module.exports.createUser = (req, res, next) => {
   const {
     name,
     about,
@@ -51,21 +49,11 @@ module.exports.createUser = (req, res) => {
           email: user.email,
         },
       }))
-      .catch((err) => {
-        if (err.name.includes('ValidationError')) {
-          return res.status(400).send({ message: 'Ошибка валидации' });
-        }
-        if (err.name.includes('MongoError')) {
-          return res.status(409).send({ message: 'Пользователь с такой почтой уже существует' });
-        }
-        return res.status(500).send({ message: err.code });
-      });
-  } else {
-    res.status(400).send({ message: 'Неправильный формат пароля' });
+      .catch(next);
   }
 };
 
-module.exports.login = (req, res) => {
+module.exports.login = (req, res, next) => {
   const { email, password } = req.body;
 
   return User.findUserByCredentials(email, password)
@@ -83,10 +71,5 @@ module.exports.login = (req, res) => {
         })
         .send({ message: 'Авторизация прошла успешно' });
     })
-    .catch((err) => {
-      if (err.message.includes('Неправильные почта или пароль')) {
-        return res.status(401).send({ message: err.message });
-      }
-      return res.status(500).send({ message: err.message });
-    });
+    .catch(next);
 };
