@@ -74,7 +74,7 @@ app.use((err, req, res, next) => {
   let { statusCode = 500, message } = err;
 
   if (err.name.includes('MongoError')) {
-    statusCode = 401;
+    statusCode = 409;
     message = 'Пользователь с такой почтой уже существует';
   }
 
